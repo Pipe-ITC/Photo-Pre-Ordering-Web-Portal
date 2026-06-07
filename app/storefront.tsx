@@ -243,7 +243,7 @@ function ImageIdModal({
         <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
         <span className="kicker dark">{product.eyebrow}</span>
         <h2 id="modal-title">{product.name}</h2>
-        <p>Enter the image IDs exactly as they appear at the photo viewing station.</p>
+        <p>Enter the image IDs exactly as they appear on the photo viewing boards.</p>
         <form onSubmit={submit}>
           {product.imageFields.map((field: ImageField) => (
             <label key={field.key}>
