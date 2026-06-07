@@ -60,9 +60,12 @@ means £12.00. The fallback demo prices are:
 | Filled Frame | `PRICE_FILLED_FRAME` | £45.00 |
 | Medal Frame | `PRICE_MEDAL_FRAME` | £38.00 |
 
-`RESEND_API_KEY` and `EMAIL_FROM` use the Resend email API. If they are omitted in
-development, email events are logged instead of sent. The admin board uses HTTP Basic
-Authentication configured by `ADMIN_USERNAME` and `ADMIN_PASSWORD`.
+Email is sent through the Mailgun HTTP API. Configure `MAILGUN_API_KEY`,
+`MAILGUN_DOMAIN`, and `MAILGUN_FROM` using a verified Mailgun sending domain. Set
+`MAILGUN_REGION` to `EU` for an EU-region domain or `US` for a US-region domain. If
+the Mailgun settings are omitted in development, email events are logged instead of
+sent. The admin board uses HTTP Basic Authentication configured by `ADMIN_USERNAME`
+and `ADMIN_PASSWORD`.
 
 ## Production notes
 

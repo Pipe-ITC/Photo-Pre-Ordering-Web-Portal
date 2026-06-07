@@ -5,27 +5,37 @@ type EmailOptions = {
 };
 
 async function sendEmail({ to, subject, html }: EmailOptions) {
-  if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) {
+  const apiKey = process.env.MAILGUN_API_KEY;
+  const domain = process.env.MAILGUN_DOMAIN;
+  const from = process.env.MAILGUN_FROM;
+
+  if (!apiKey || !domain || !from) {
     console.info(`[email skipped] ${subject} -> ${to}`);
     return;
   }
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      from: process.env.EMAIL_FROM,
-      to,
-      subject,
-      html
-    })
-  });
+  const region = process.env.MAILGUN_REGION?.trim().toUpperCase();
+  const baseUrl =
+    region === "EU" ? "https://api.eu.mailgun.net" : "https://api.mailgun.net";
+  const form = new FormData();
+  form.set("from", from);
+  form.set("to", to);
+  form.set("subject", subject);
+  form.set("html", html);
+
+  const response = await fetch(
+    `${baseUrl}/v3/${encodeURIComponent(domain)}/messages`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${Buffer.from(`api:${apiKey}`).toString("base64")}`
+      },
+      body: form
+    }
+  );
 
   if (!response.ok) {
-    throw new Error(`Email provider returned ${response.status}: ${await response.text()}`);
+    throw new Error(`Mailgun returned ${response.status}: ${await response.text()}`);
   }
 }
 
