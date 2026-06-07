@@ -1,0 +1,28 @@
+{
+  "name": "photeam-festival-orders",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.7.0",
+    "next": "^15.3.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "stripe": "^18.1.0"
+  },
+  "devDependencies": {
+    "@next/swc-wasm-nodejs": "^15.5.19",
+    "@types/node": "^22.15.3",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "prisma": "^6.7.0",
+    "typescript": "^5.8.3"
+  }
+}
