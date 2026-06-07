@@ -25,7 +25,7 @@ export const products: Product[] = [
     fallbackPrice: 1000,
     accent: "cyan",
     imageFields: [
-      { key: "image", label: "Photo image ID", hint: "The ID shown beneath your chosen photo" }
+      { key: "image", label: "Photo image", hint: "The ID shown beneath your chosen photo" }
     ]
   },
   {
@@ -37,7 +37,7 @@ export const products: Product[] = [
     fallbackPrice: 1500,
     accent: "blue",
     imageFields: [
-      { key: "image", label: "Photo image ID", hint: "The ID shown beneath your chosen photo" }
+      { key: "image", label: "Photo image", hint: "The ID shown beneath your chosen photo" }
     ]
   },
   {
@@ -49,8 +49,8 @@ export const products: Product[] = [
     fallbackPrice: 2000,
     accent: "navy",
     imageFields: [
-      { key: "largeImage", label: "Large print image ID", hint: "Image for the 8 × 12 print" },
-      { key: "mediumImage", label: "Medium print image ID", hint: "Image for the 6 × 8 print" }
+      { key: "largeImage", label: "Large print image", hint: "Image for the 8 × 12 print" },
+      { key: "mediumImage", label: "Medium print image", hint: "Image for the 6 × 8 print" }
     ]
   },
   {
@@ -62,22 +62,22 @@ export const products: Product[] = [
     fallbackPrice: 4000,
     accent: "cyan",
     imageFields: [
-      { key: "portrait", label: "Portrait image ID", hint: "Your chosen individual portrait" },
-      { key: "team", label: "Team photo image ID", hint: "Your chosen team photograph" },
-      { key: "action", label: "Action shot image ID", hint: "Your chosen match action photograph" }
+      { key: "portrait", label: "Portrait image", hint: "Your chosen individual portrait" },
+      { key: "team", label: "Team photo image", hint: "Your chosen team photograph" },
+      { key: "action", label: "Action shot image", hint: "Your chosen match action photograph" }
     ]
   },
   {
     id: "medal-frame",
     name: "Medal Frame",
     eyebrow: "Two-photo medal frame",
-    description: "A portrait and team photo presented with your medal.",
+    description: "One action shot, and a choice of one portrait OR one team photo presented with your medal.",
     priceEnv: "PRICE_MEDAL_FRAME",
     fallbackPrice: 4500,
     accent: "blue",
     imageFields: [
-      { key: "portrait", label: "Portrait image ID", hint: "Your chosen individual portrait" },
-      { key: "team", label: "Team photo image ID", hint: "Your chosen team photograph" }
+      { key: "portrait", label: "Portrait image OR team photo image", hint: "Your chosen individual portrait OR team photograph" },
+      { key: "action", label: "Action shot image", hint: "Your chosen match action photograph" }
     ]
   }
 ];
