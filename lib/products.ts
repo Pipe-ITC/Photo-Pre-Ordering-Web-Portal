@@ -22,7 +22,7 @@ export const products: Product[] = [
     eyebrow: "6 × 8 inch",
     description: "A classic festival print, ready to frame.",
     priceEnv: "PRICE_MEDIUM_PRINT",
-    fallbackPrice: 1200,
+    fallbackPrice: 1000,
     accent: "cyan",
     imageFields: [
       { key: "image", label: "Photo image ID", hint: "The ID shown beneath your chosen photo" }
@@ -34,7 +34,7 @@ export const products: Product[] = [
     eyebrow: "8 × 12 inch",
     description: "A larger statement print for your standout moment.",
     priceEnv: "PRICE_LARGE_PRINT",
-    fallbackPrice: 1800,
+    fallbackPrice: 1500,
     accent: "blue",
     imageFields: [
       { key: "image", label: "Photo image ID", hint: "The ID shown beneath your chosen photo" }
@@ -46,7 +46,7 @@ export const products: Product[] = [
     eyebrow: "Two-print bundle",
     description: "One large and one medium print, with your choice of images.",
     priceEnv: "PRICE_MEDIUM_LARGE_BUNDLE",
-    fallbackPrice: 2600,
+    fallbackPrice: 2000,
     accent: "navy",
     imageFields: [
       { key: "largeImage", label: "Large print image ID", hint: "Image for the 8 × 12 print" },
@@ -59,7 +59,7 @@ export const products: Product[] = [
     eyebrow: "Three-photo frame",
     description: "A portrait, team photo and action shot in one display.",
     priceEnv: "PRICE_FILLED_FRAME",
-    fallbackPrice: 4500,
+    fallbackPrice: 4000,
     accent: "cyan",
     imageFields: [
       { key: "portrait", label: "Portrait image ID", hint: "Your chosen individual portrait" },
@@ -73,7 +73,7 @@ export const products: Product[] = [
     eyebrow: "Two-photo medal frame",
     description: "A portrait and team photo presented with your medal.",
     priceEnv: "PRICE_MEDAL_FRAME",
-    fallbackPrice: 3800,
+    fallbackPrice: 4500,
     accent: "blue",
     imageFields: [
       { key: "portrait", label: "Portrait image ID", hint: "Your chosen individual portrait" },
