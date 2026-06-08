@@ -132,7 +132,19 @@ check.
    `/admin`.
 
 The webhook is the authoritative payment record and safely ignores duplicate
-successful events.
+successful events. The success page also securely retrieves the Checkout Session
+from Stripe and reconciles a paid order as a fallback, but this does not replace the
+production webhook because customers may close Stripe before returning to the site.
+
+If a completed Stripe payment remains pending in the database:
+
+1. Open Stripe Workbench and inspect the webhook endpoint's event deliveries.
+2. Confirm the endpoint URL exactly matches the active production domain.
+3. Confirm the endpoint and `STRIPE_SECRET_KEY` are both in the same Stripe mode
+   (test or live).
+4. Copy that endpoint's signing secret into Vercel as `STRIPE_WEBHOOK_SECRET`.
+5. Redeploy after changing Vercel environment variables.
+6. Use Stripe's **Resend** action on the failed `checkout.session.completed` event.
 
 ## Mailgun production setup
 

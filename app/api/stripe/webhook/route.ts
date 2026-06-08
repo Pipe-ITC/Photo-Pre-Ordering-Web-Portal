@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
-import { sendAdminOrderEmail, type OrderedItem } from "@/lib/email";
+import { reconcilePaidCheckoutSession } from "@/lib/orders";
 
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
@@ -22,53 +22,46 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid signature." }, { status: 400 });
   }
 
-  if (
-    event.type === "checkout.session.completed" ||
-    event.type === "checkout.session.async_payment_succeeded"
-  ) {
-    const session = event.data.object as Stripe.Checkout.Session;
-    const orderId = session.metadata?.orderId;
-    if (orderId && session.payment_status === "paid") {
-      let order = await prisma.order.findUnique({ where: { id: orderId } });
-      if (order && order.paymentStatus !== "paid") {
-        order = await prisma.order.update({
-          where: { id: orderId },
-          data: {
-            paymentStatus: "paid",
-            stripePaymentIntentId:
-              typeof session.payment_intent === "string" ? session.payment_intent : null
-          }
-        });
-      }
+  console.info(`Stripe webhook received: ${event.type} (${event.id})`);
 
-      if (order && !order.adminNotifiedAt) {
-        await sendAdminOrderEmail({
-          orderNumber: order.orderNumber,
-          customerName: order.customerName,
-          customerEmail: order.customerEmail,
-          paymentStatus: "Paid successfully",
-          items: order.items as unknown as OrderedItem[]
-        });
-
-        await prisma.order.update({
-          where: { id: order.id },
-          data: { adminNotifiedAt: new Date() }
-        });
-      }
+  try {
+    if (
+      event.type === "checkout.session.completed" ||
+      event.type === "checkout.session.async_payment_succeeded"
+    ) {
+      const result = await reconcilePaidCheckoutSession(
+        event.data.object as Stripe.Checkout.Session,
+        { throwOnNotificationFailure: true }
+      );
+      console.info(`Stripe reconciliation result: ${result.status}`);
     }
-  }
 
-  if (event.type === "checkout.session.async_payment_failed") {
-    const session = event.data.object as Stripe.Checkout.Session;
-    if (session.metadata?.orderId) {
+    if (event.type === "checkout.session.async_payment_failed") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const candidateOrderIds = [
+        session.metadata?.orderId,
+        session.client_reference_id
+      ].filter((value): value is string => Boolean(value));
+
       await prisma.order.updateMany({
         where: {
-          id: session.metadata.orderId,
-          paymentStatus: { not: "paid" }
+          paymentStatus: { not: "paid" },
+          OR: [
+            ...(candidateOrderIds.length
+              ? [{ id: { in: candidateOrderIds } }]
+              : []),
+            { stripeCheckoutSessionId: session.id }
+          ]
         },
         data: { paymentStatus: "failed" }
       });
     }
+  } catch (error) {
+    console.error(`Stripe webhook processing failed for ${event.id}`, error);
+    return NextResponse.json(
+      { error: "Webhook processing failed." },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({ received: true });

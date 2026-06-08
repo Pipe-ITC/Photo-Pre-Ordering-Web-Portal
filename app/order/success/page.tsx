@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
+import { reconcilePaidCheckoutSession } from "@/lib/orders";
 
 export const dynamic = "force-dynamic";
 
@@ -17,12 +18,17 @@ export default async function SuccessPage({
     try {
       const session = await getStripe().checkout.sessions.retrieve(sessionId);
       paid = session.payment_status === "paid";
-      const order = await prisma.order.findUnique({
-        where: { stripeCheckoutSessionId: sessionId }
-      });
+      const result = paid
+        ? await reconcilePaidCheckoutSession(session)
+        : { order: null };
+      const order =
+        result.order ||
+        (await prisma.order.findUnique({
+          where: { stripeCheckoutSessionId: sessionId }
+        }));
       orderNumber = order?.orderNumber || session.metadata?.orderNumber || "";
-    } catch {
-      // The webhook remains the authoritative payment record.
+    } catch (error) {
+      console.error(`Stripe success-page reconciliation failed for ${sessionId}`, error);
     }
   }
 
