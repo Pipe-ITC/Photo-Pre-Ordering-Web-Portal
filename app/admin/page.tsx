@@ -68,6 +68,8 @@ export default async function AdminPage() {
               </div>
 
               <div className="order-status">
+                <span>Admin notified: <b>{formatDate(order.adminNotifiedAt)}</b></span>
+                <span>Ready email: <b>{formatDate(order.readyEmailSentAt)}</b></span>
                 <span>Fulfilled: <b>{formatDate(order.fulfilledAt)}</b></span>
                 <span>Collected: <b>{formatDate(order.collectedAt)}</b></span>
                 <OrderActions

@@ -47,14 +47,31 @@ export type OrderedItem = {
   imageIds: Record<string, string>;
 };
 
+function escapeHtml(value: string) {
+  return value.replace(
+    /[&<>"']/g,
+    (character) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      })[character] || character
+  );
+}
+
 function itemRows(items: OrderedItem[]) {
   return items
     .map((item) => {
       const ids = Object.entries(item.imageIds)
-        .map(([label, value]) => `<li><strong>${label}:</strong> ${value}</li>`)
+        .map(
+          ([label, value]) =>
+            `<li><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</li>`
+        )
         .join("");
       return `<div style="padding:16px 0;border-bottom:1px solid #d9e2ea">
-        <strong>${item.quantity} × ${item.productName}</strong>
+        <strong>${item.quantity} × ${escapeHtml(item.productName)}</strong>
         <ul>${ids}</ul>
       </div>`;
     })
@@ -73,9 +90,9 @@ export async function sendAdminOrderEmail(order: {
     to: process.env.ADMIN_EMAIL,
     subject: `New paid festival order ${order.orderNumber}`,
     html: `<h1>New festival order</h1>
-      <p><strong>Order:</strong> ${order.orderNumber}</p>
-      <p><strong>Customer:</strong> ${order.customerName} (${order.customerEmail})</p>
-      <p><strong>Payment:</strong> ${order.paymentStatus}</p>
+      <p><strong>Order:</strong> ${escapeHtml(order.orderNumber)}</p>
+      <p><strong>Customer:</strong> ${escapeHtml(order.customerName)} (${escapeHtml(order.customerEmail)})</p>
+      <p><strong>Payment:</strong> ${escapeHtml(order.paymentStatus)}</p>
       ${itemRows(order.items)}`
   });
 }
@@ -91,8 +108,8 @@ export async function sendReadyForCollectionEmail(order: {
     to: order.customerEmail,
     subject: `Your Photeam order ${order.orderNumber} is ready`,
     html: `<h1>Your photos are ready!</h1>
-      <p>Hi ${order.customerName},</p>
-      <p>Your order <strong>${order.orderNumber}</strong> has been prepared and is ready to collect from ${collectionPoint}.</p>
+      <p>Hi ${escapeHtml(order.customerName)},</p>
+      <p>Your order <strong>${escapeHtml(order.orderNumber)}</strong> has been prepared and is ready to collect from ${escapeHtml(collectionPoint)}.</p>
       <p>Thank you,<br>Photeam</p>`
   });
 }

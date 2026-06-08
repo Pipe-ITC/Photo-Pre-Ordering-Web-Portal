@@ -17,30 +17,42 @@ export async function PATCH(
     return NextResponse.json({ error: "Order not found." }, { status: 404 });
   }
 
-  const shouldSendReadyEmail = body.fulfilled === true && !existing.fulfilledAt;
-  const order = await prisma.order.update({
-    where: { id },
-    data: {
-      ...(typeof body.fulfilled === "boolean"
-        ? { fulfilledAt: body.fulfilled ? new Date() : null }
-        : {}),
-      ...(typeof body.collected === "boolean"
-        ? { collectedAt: body.collected ? new Date() : null }
-        : {})
-    }
-  });
+  if (body.collected === true && !existing.fulfilledAt && body.fulfilled !== true) {
+    return NextResponse.json(
+      { error: "An order must be fulfilled before it can be collected." },
+      { status: 400 }
+    );
+  }
 
-  if (shouldSendReadyEmail) {
+  if (body.fulfilled === true && !existing.readyEmailSentAt) {
     try {
-      await sendReadyForCollectionEmail(order);
+      await sendReadyForCollectionEmail(existing);
     } catch (error) {
       console.error("Ready email failed", error);
       return NextResponse.json(
-        { error: "Order was marked fulfilled, but the customer email could not be sent." },
+        { error: "The customer email could not be sent, so the order was not marked fulfilled." },
         { status: 502 }
       );
     }
   }
+
+  await prisma.order.update({
+    where: { id },
+    data: {
+      ...(typeof body.fulfilled === "boolean"
+        ? {
+            fulfilledAt: body.fulfilled ? existing.fulfilledAt || new Date() : null,
+            ...(body.fulfilled && !existing.readyEmailSentAt
+              ? { readyEmailSentAt: new Date() }
+              : {}),
+            ...(!body.fulfilled ? { collectedAt: null } : {})
+          }
+        : {}),
+      ...(typeof body.collected === "boolean"
+        ? { collectedAt: body.collected ? existing.collectedAt || new Date() : null }
+        : {})
+    }
+  });
 
   return NextResponse.json({ ok: true });
 }

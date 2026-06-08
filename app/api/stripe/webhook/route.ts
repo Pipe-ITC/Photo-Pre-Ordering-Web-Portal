@@ -29,9 +29,9 @@ export async function POST(request: Request) {
     const session = event.data.object as Stripe.Checkout.Session;
     const orderId = session.metadata?.orderId;
     if (orderId && session.payment_status === "paid") {
-      const existing = await prisma.order.findUnique({ where: { id: orderId } });
-      if (existing && existing.paymentStatus !== "paid") {
-        const order = await prisma.order.update({
+      let order = await prisma.order.findUnique({ where: { id: orderId } });
+      if (order && order.paymentStatus !== "paid") {
+        order = await prisma.order.update({
           where: { id: orderId },
           data: {
             paymentStatus: "paid",
@@ -39,13 +39,20 @@ export async function POST(request: Request) {
               typeof session.payment_intent === "string" ? session.payment_intent : null
           }
         });
+      }
 
+      if (order && !order.adminNotifiedAt) {
         await sendAdminOrderEmail({
           orderNumber: order.orderNumber,
           customerName: order.customerName,
           customerEmail: order.customerEmail,
           paymentStatus: "Paid successfully",
           items: order.items as unknown as OrderedItem[]
+        });
+
+        await prisma.order.update({
+          where: { id: order.id },
+          data: { adminNotifiedAt: new Date() }
         });
       }
     }
@@ -54,8 +61,11 @@ export async function POST(request: Request) {
   if (event.type === "checkout.session.async_payment_failed") {
     const session = event.data.object as Stripe.Checkout.Session;
     if (session.metadata?.orderId) {
-      await prisma.order.update({
-        where: { id: session.metadata.orderId },
+      await prisma.order.updateMany({
+        where: {
+          id: session.metadata.orderId,
+          paymentStatus: { not: "paid" }
+        },
         data: { paymentStatus: "failed" }
       });
     }
