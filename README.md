@@ -10,7 +10,7 @@ with notifications delivered through Mailgun.
 - Next.js application and API routes
 - PostgreSQL database through Prisma
 - Stripe Checkout with signed webhooks
-- Mailgun transactional email
+- Mailgun order confirmation, administrator alert, and collection-ready emails
 - HTTP Basic Authentication for the admin area
 - Prisma migrations applied during deployment
 - `/api/health` database health check
@@ -152,7 +152,8 @@ If a completed Stripe payment remains pending in the database:
 2. Publish Mailgun's SPF, DKIM, tracking, and receiving DNS records as required.
 3. Set `MAILGUN_REGION` to the region where the domain was created.
 4. Use a sender address on that verified domain in `MAILGUN_FROM`.
-5. Confirm that paid-order and ready-for-collection messages arrive successfully.
+5. Confirm that order confirmation, paid-order, and ready-for-collection messages
+   arrive successfully.
 
 Sandbox Mailgun domains can only send to authorised recipients and are not suitable
 for customer-facing production use.
@@ -168,6 +169,7 @@ for customer-facing production use.
 - `/admin` challenges for credentials and is not cached
 - Test order appears in the admin dashboard
 - Paid-order email reaches the administrator
+- Order confirmation email reaches the customer
 - Fulfilment email reaches the customer
 - Order can be marked collected
 

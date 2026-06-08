@@ -1,6 +1,10 @@
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
-import { sendAdminOrderEmail, type OrderedItem } from "@/lib/email";
+import {
+  sendAdminOrderEmail,
+  sendOrderConfirmationEmail,
+  type OrderedItem
+} from "@/lib/email";
 
 type ReconcileOptions = {
   throwOnNotificationFailure?: boolean;
@@ -45,6 +49,36 @@ export async function reconcilePaidCheckoutSession(
           : order.stripePaymentIntentId
     }
   });
+
+  const confirmationClaim = await prisma.order.updateMany({
+    where: {
+      id: paidOrder.id,
+      orderConfirmationSentAt: null
+    },
+    data: { orderConfirmationSentAt: new Date() }
+  });
+
+  if (confirmationClaim.count === 1) {
+    try {
+      await sendOrderConfirmationEmail({
+        orderNumber: paidOrder.orderNumber,
+        customerName: paidOrder.customerName,
+        customerEmail: paidOrder.customerEmail,
+        totalPence: paidOrder.totalPence,
+        items: paidOrder.items as unknown as OrderedItem[]
+      });
+    } catch (error) {
+      await prisma.order.update({
+        where: { id: paidOrder.id },
+        data: { orderConfirmationSentAt: null }
+      });
+      console.error(
+        `Order confirmation failed for order ${paidOrder.orderNumber}`,
+        error
+      );
+      if (options.throwOnNotificationFailure) throw error;
+    }
+  }
 
   if (!paidOrder.adminNotifiedAt) {
     try {

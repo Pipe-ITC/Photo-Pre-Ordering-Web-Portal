@@ -21,6 +21,7 @@ model Order {
   stripeCheckoutSessionId String?  @unique
   stripePaymentIntentId   String?
   adminNotifiedAt         DateTime?
+  orderConfirmationSentAt DateTime?
   readyEmailSentAt        DateTime?
   fulfilledAt             DateTime?
   collectedAt             DateTime?

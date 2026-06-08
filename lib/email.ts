@@ -78,6 +78,13 @@ function itemRows(items: OrderedItem[]) {
     .join("");
 }
 
+function formatPrice(pricePence: number) {
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: "GBP"
+  }).format(pricePence / 100);
+}
+
 export async function sendAdminOrderEmail(order: {
   orderNumber: string;
   customerName: string;
@@ -94,6 +101,36 @@ export async function sendAdminOrderEmail(order: {
       <p><strong>Customer:</strong> ${escapeHtml(order.customerName)} (${escapeHtml(order.customerEmail)})</p>
       <p><strong>Payment:</strong> ${escapeHtml(order.paymentStatus)}</p>
       ${itemRows(order.items)}`
+  });
+}
+
+export async function sendOrderConfirmationEmail(order: {
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  totalPence: number;
+  items: OrderedItem[];
+}) {
+  const collectionPoint =
+    process.env.NEXT_PUBLIC_COLLECTION_POINT || "the Photeam collection desk";
+
+  await sendEmail({
+    to: order.customerEmail,
+    subject: `Photeam order confirmation ${order.orderNumber}`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;color:#142536">
+      <div style="padding:24px;background:#071d35;color:#ffffff">
+        <h1 style="margin:0">Thank you for your order</h1>
+      </div>
+      <div style="padding:24px">
+        <p>Hi ${escapeHtml(order.customerName)},</p>
+        <p>We have received payment for your Photeam festival order.</p>
+        <p><strong>Order number:</strong> ${escapeHtml(order.orderNumber)}</p>
+        ${itemRows(order.items)}
+        <p style="font-size:18px"><strong>Total paid: ${escapeHtml(formatPrice(order.totalPence))}</strong></p>
+        <p>We will email you again when your order is ready to collect from ${escapeHtml(collectionPoint)}.</p>
+        <p>Thank you,<br>Photeam</p>
+      </div>
+    </div>`
   });
 }
 
