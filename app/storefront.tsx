@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import { trackInteraction } from "@/lib/analytics";
 import { formatPrice, ImageField, Product } from "@/lib/products";
 
 type PublicProduct = Product & { pricePence: number };
@@ -30,6 +31,12 @@ export function Storefront({ products }: { products: PublicProduct[] }) {
   );
 
   function addItem(product: PublicProduct, imageIds: Record<string, string>) {
+    trackInteraction("cart_item_added", {
+      product_id: product.id,
+      product_name: product.name,
+      item_count: cart.length + 1,
+      cart_value_pence: total + product.pricePence
+    });
     setCart((items) => [
       ...items,
       {
@@ -43,10 +50,25 @@ export function Storefront({ products }: { products: PublicProduct[] }) {
     setSelected(null);
   }
 
+  function removeItem(item: CartItem) {
+    const nextCart = cart.filter((line) => line.lineId !== item.lineId);
+    trackInteraction("cart_item_removed", {
+      product_id: item.productId,
+      product_name: item.productName,
+      item_count: nextCart.length,
+      cart_value_pence: nextCart.reduce((sum, line) => sum + line.pricePence, 0)
+    });
+    setCart(nextCart);
+  }
+
   async function checkout(event: FormEvent) {
     event.preventDefault();
     setError("");
     setSubmitting(true);
+    trackInteraction("checkout_started", {
+      item_count: cart.length,
+      cart_value_pence: total
+    });
     try {
       const response = await fetch("/api/checkout", {
         method: "POST",
@@ -55,8 +77,16 @@ export function Storefront({ products }: { products: PublicProduct[] }) {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not start checkout.");
+      trackInteraction("checkout_redirected", {
+        item_count: cart.length,
+        cart_value_pence: total
+      });
       window.location.href = result.url;
     } catch (checkoutError) {
+      trackInteraction("checkout_failed", {
+        item_count: cart.length,
+        cart_value_pence: total
+      });
       setError(checkoutError instanceof Error ? checkoutError.message : "Something went wrong.");
       setSubmitting(false);
     }
@@ -128,7 +158,18 @@ export function Storefront({ products }: { products: PublicProduct[] }) {
               </ul>
               <div className="product-footer">
                 <strong>{formatPrice(product.pricePence)}</strong>
-                <button onClick={() => setSelected(product)}>Add to basket</button>
+                <button
+                  onClick={() => {
+                    trackInteraction("product_selected", {
+                      product_id: product.id,
+                      product_name: product.name,
+                      price_pence: product.pricePence
+                    });
+                    setSelected(product);
+                  }}
+                >
+                  Add to basket
+                </button>
               </div>
             </article>
           ))}
@@ -163,7 +204,7 @@ export function Storefront({ products }: { products: PublicProduct[] }) {
                   </div>
                   <div>
                     <strong>{formatPrice(item.pricePence)}</strong>
-                    <button onClick={() => setCart((items) => items.filter((line) => line.lineId !== item.lineId))}>
+                    <button onClick={() => removeItem(item)}>
                       Remove
                     </button>
                   </div>

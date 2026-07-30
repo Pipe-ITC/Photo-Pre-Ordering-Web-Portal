@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { trackInteraction } from "@/lib/analytics";
 
 export function OrderActions({
   orderId,
@@ -21,13 +22,29 @@ export function OrderActions({
   async function update(field: "fulfilled" | "collected", value: boolean) {
     setBusy(field);
     setError("");
+    trackInteraction("admin_order_status_update_started", {
+      field,
+      value
+    });
     const response = await fetch(`/api/admin/orders/${orderId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ [field]: value })
     });
     const result = await response.json();
-    if (!response.ok) setError(result.error || "Update failed.");
+    if (!response.ok) {
+      trackInteraction("admin_order_status_update_failed", {
+        field,
+        value,
+        status: response.status
+      });
+      setError(result.error || "Update failed.");
+    } else {
+      trackInteraction("admin_order_status_updated", {
+        field,
+        value
+      });
+    }
     setBusy("");
     router.refresh();
   }

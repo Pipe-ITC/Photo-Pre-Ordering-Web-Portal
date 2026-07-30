@@ -11,6 +11,7 @@ with notifications delivered through Mailgun.
 - PostgreSQL database through Prisma
 - Stripe Checkout with signed webhooks
 - Mailgun order confirmation, administrator alert, and collection-ready emails
+- Vercel Web Analytics page views with optional custom interaction events
 - HTTP Basic Authentication for the admin area
 - Prisma migrations applied during deployment
 - `/api/health` database health check
@@ -67,6 +68,7 @@ Good managed options include Neon, Supabase, Railway, Render, and AWS RDS.
 | `MAILGUN_REGION` | `EU` or `US`, matching the Mailgun domain |
 | `NEXT_PUBLIC_FESTIVAL_NAME` | Festival name shown to customers |
 | `NEXT_PUBLIC_COLLECTION_POINT` | Collection location used in customer emails |
+| `NEXT_PUBLIC_ENABLE_VERCEL_CUSTOM_EVENTS` | Enables Vercel custom interaction events when set to `true` |
 
 Validate a configured production environment before deploying:
 
@@ -76,6 +78,13 @@ npm run deploy:check
 
 Product prices are integers in pence. For example,
 `PRICE_MEDIUM_PRINT="1000"` means £10.00.
+
+Vercel Web Analytics page views are loaded from the application layout. Custom
+interaction events are implemented for product selection, basket changes,
+checkout starts, checkout failures, Stripe redirects, and admin order status
+changes. They intentionally avoid customer contact details, image IDs, and order
+identifiers. Leave `NEXT_PUBLIC_ENABLE_VERCEL_CUSTOM_EVENTS` set to `false` on
+Hobby deployments unless custom events are available for the project.
 
 ## Vercel deployment
 
