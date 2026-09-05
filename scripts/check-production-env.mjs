@@ -1,6 +1,8 @@
 const required = [
   "DATABASE_URL",
   "NEXT_PUBLIC_SITE_URL",
+  "SYNC_CREDENTIAL",
+  "BLOB_READ_WRITE_TOKEN",
   "STRIPE_SECRET_KEY",
   "STRIPE_WEBHOOK_SECRET",
   "PRICE_MEDIUM_PRINT",
@@ -56,6 +58,9 @@ for (const name of priceVariables) {
 
 if (process.env.ADMIN_PASSWORD && process.env.ADMIN_PASSWORD.length < 16) {
   errors.push("ADMIN_PASSWORD must contain at least 16 characters.");
+}
+if (process.env.SYNC_CREDENTIAL && process.env.SYNC_CREDENTIAL.length < 32) {
+  errors.push("SYNC_CREDENTIAL must contain at least 32 characters.");
 }
 
 if (process.env.MAILGUN_REGION && !["EU", "US"].includes(process.env.MAILGUN_REGION.toUpperCase())) {

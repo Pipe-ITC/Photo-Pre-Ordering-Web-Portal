@@ -49,6 +49,7 @@ export default async function AdminPage() {
                   <span className={`payment-pill ${order.paymentStatus}`}>{order.paymentStatus}</span>
                   <h2>{order.orderNumber}</h2>
                   <p>{formatDate(order.createdAt)} · {order.customerName} · {order.customerEmail}</p>
+                  {order.sourceOrderNumber && <p>Application Server #{order.sourceOrderNumber} · {order.sourceStatus || "Imported"}</p>}
                   {(order.teamName || order.customerPhone) && <p>{[order.teamName, order.customerPhone].filter(Boolean).join(" · ")}</p>}
                 </div>
                 <strong>{formatPrice(order.totalPence)}</strong>

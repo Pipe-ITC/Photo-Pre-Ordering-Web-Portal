@@ -1,307 +1,53 @@
 "use client";
 
+import Image from "next/image";
 import { FormEvent, useMemo, useState } from "react";
 import { trackInteraction } from "@/lib/analytics";
-import { formatPrice, ImageField, Product } from "@/lib/products";
+import { formatPrice, Product } from "@/lib/products";
 
 type PublicProduct = Product & { pricePence: number };
-type CartItem = {
-  lineId: string;
-  productId: string;
-  productName: string;
-  pricePence: number;
-  imageIds: Record<string, string>;
-};
+export type PublicAlbum = { id: string; parentId: string | null; name: string };
+export type PublicImage = { id: string; albumId: string; filename: string; width: number | null; height: number | null };
+type Selection = { label: string; imageId: string; filename: string; albumName: string };
+type CartItem = { lineId: string; productId: string; productName: string; pricePence: number; selections: Selection[] };
 
-export function Storefront({ products }: { products: PublicProduct[] }) {
-  const [selected, setSelected] = useState<PublicProduct | null>(null);
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [customer, setCustomer] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    teamName: ""
-  });
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+export function Storefront({ event, products, albums, images, orderingOpen, initialAlbumId }: { event: { name: string; publicToken: string; ordersCloseAt: string | null }; products: PublicProduct[]; albums: PublicAlbum[]; images: PublicImage[]; orderingOpen: boolean; initialAlbumId?: string }) {
+  const leafAlbums = albums.filter((album) => album.parentId); const firstAlbumId = leafAlbums.find((album) => album.id === initialAlbumId)?.id || leafAlbums[0]?.id || ""; const [albumId, setAlbumId] = useState(firstAlbumId);
+  const [selected, setSelected] = useState<PublicProduct | null>(null); const [cart, setCart] = useState<CartItem[]>([]);
+  const [customer, setCustomer] = useState({ name: "", email: "", phone: "", teamName: "" }); const [submitting, setSubmitting] = useState(false); const [error, setError] = useState("");
+  const total = useMemo(() => cart.reduce((sum, item) => sum + item.pricePence, 0), [cart]);
+  const currentImages = images.filter((image) => image.albumId === albumId); const currentAlbum = albums.find((album) => album.id === albumId); const parentName = albums.find((album) => album.id === currentAlbum?.parentId)?.name;
 
-  const total = useMemo(
-    () => cart.reduce((sum, item) => sum + item.pricePence, 0),
-    [cart]
-  );
-
-  function addItem(product: PublicProduct, imageIds: Record<string, string>) {
-    trackInteraction("cart_item_added", {
-      product_id: product.id,
-      product_name: product.name,
-      item_count: cart.length + 1,
-      cart_value_pence: total + product.pricePence
-    });
-    setCart((items) => [
-      ...items,
-      {
-        lineId: crypto.randomUUID(),
-        productId: product.id,
-        productName: product.name,
-        pricePence: product.pricePence,
-        imageIds
-      }
-    ]);
-    setSelected(null);
+  function addItem(product: PublicProduct, selections: Selection[]) {
+    setCart((items) => [...items, { lineId: crypto.randomUUID(), productId: product.id, productName: product.name, pricePence: product.pricePence, selections }]);
+    trackInteraction("cart_item_added", { product_id: product.id, item_count: cart.length + 1, cart_value_pence: total + product.pricePence }); setSelected(null);
   }
-
-  function removeItem(item: CartItem) {
-    const nextCart = cart.filter((line) => line.lineId !== item.lineId);
-    trackInteraction("cart_item_removed", {
-      product_id: item.productId,
-      product_name: item.productName,
-      item_count: nextCart.length,
-      cart_value_pence: nextCart.reduce((sum, line) => sum + line.pricePence, 0)
-    });
-    setCart(nextCart);
-  }
-
-  async function checkout(event: FormEvent) {
-    event.preventDefault();
-    setError("");
-    setSubmitting(true);
-    trackInteraction("checkout_started", {
-      item_count: cart.length,
-      cart_value_pence: total
-    });
+  async function checkout(eventForm: FormEvent) {
+    eventForm.preventDefault(); setError(""); setSubmitting(true);
     try {
-      const response = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customer, items: cart })
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Could not start checkout.");
-      trackInteraction("checkout_redirected", {
-        item_count: cart.length,
-        cart_value_pence: total
-      });
-      window.location.href = result.url;
-    } catch (checkoutError) {
-      trackInteraction("checkout_failed", {
-        item_count: cart.length,
-        cart_value_pence: total
-      });
-      setError(checkoutError instanceof Error ? checkoutError.message : "Something went wrong.");
-      setSubmitting(false);
-    }
+      const response = await fetch("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventToken: event.publicToken, customer, items: cart.map((item) => ({ productId: item.productId, imageIds: item.selections.map((selection) => selection.imageId) })) }) });
+      const result = await response.json(); if (!response.ok) throw new Error(result.error || "Could not start checkout."); window.location.href = result.url;
+    } catch (checkoutError) { setError(checkoutError instanceof Error ? checkoutError.message : "Something went wrong."); setSubmitting(false); }
   }
 
-  const festivalName =
-    process.env.NEXT_PUBLIC_FESTIVAL_NAME || "Weekend Football Festival";
-
-  return (
-    <main>
-      <header className="site-header">
-        <a className="brand" href="#top" aria-label="Photeam festival orders">
-          <img
-            src="https://www.photeam.co.uk/wp-content/uploads/2023/08/Photeam-Logo.png"
-            alt="Photeam"
-          />
-          <span>
-            <strong>PHOTEAM</strong>
-            <small>Giving your team the superstar treatment</small>
-          </span>
-        </a>
-        <a className="basket-link" href="#basket">
-          Basket <span>{cart.length}</span>
-        </a>
-      </header>
-
-      <section className="hero" id="top">
-        <div className="hero-copy">
-          <span className="kicker">Festival photo collection</span>
-          <h1>Your best moments. <em>Made to keep.</em></h1>
-          <p>
-            Choose your products, enter the image IDs displayed at the festival,
-            and pay securely online. We’ll prepare everything for collection.
-          </p>
-          <a className="primary-button" href="#products">Build your order</a>
-        </div>
-        <div className="hero-photo" aria-label="Youth football action">
-          <div className="festival-badge">
-            <span>Now shooting</span>
-            <strong>{festivalName}</strong>
-          </div>
-        </div>
-      </section>
-
-      <section className="steps">
-        <div><b>01</b><span>Find your photo IDs</span></div>
-        <div><b>02</b><span>Choose your products</span></div>
-        <div><b>03</b><span>Pay securely with Stripe</span></div>
-        <div><b>04</b><span>Collect when notified</span></div>
-      </section>
-
-      <section className="products-section" id="products">
-        <div className="section-heading">
-          <div>
-            <span className="kicker dark">Festival collection</span>
-            <h2>Choose your finish</h2>
-          </div>
-          <p>Every item is prepared by the Photeam crew during the festival weekend.</p>
-        </div>
-        <div className="product-grid">
-          {products.map((product, index) => (
-            <article className={`product-card ${product.accent}`} key={product.id}>
-              <div className="product-number">0{index + 1}</div>
-              <span className="product-eyebrow">{product.eyebrow}</span>
-              <h3>{product.name}</h3>
-              <p>{product.description}</p>
-              <ul>
-                {product.imageFields.map((field) => <li key={field.key}>{field.label}</li>)}
-              </ul>
-              <div className="product-footer">
-                <strong>{formatPrice(product.pricePence)}</strong>
-                <button
-                  onClick={() => {
-                    trackInteraction("product_selected", {
-                      product_id: product.id,
-                      product_name: product.name,
-                      price_pence: product.pricePence
-                    });
-                    setSelected(product);
-                  }}
-                >
-                  Add to basket
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="basket-section" id="basket">
-        <div className="basket-panel">
-          <div className="section-heading compact">
-            <div>
-              <span className="kicker dark">Your order</span>
-              <h2>Festival basket</h2>
-            </div>
-            <strong className="basket-total">{formatPrice(total)}</strong>
-          </div>
-
-          {cart.length === 0 ? (
-            <div className="empty-basket">
-              <span>0</span>
-              <p>Your basket is waiting for its first photo.</p>
-              <a href="#products">Browse products</a>
-            </div>
-          ) : (
-            <div className="cart-lines">
-              {cart.map((item) => (
-                <div className="cart-line" key={item.lineId}>
-                  <div>
-                    <strong>{item.productName}</strong>
-                    {Object.entries(item.imageIds).map(([label, id]) => (
-                      <span key={label}>{label}: <b>{id}</b></span>
-                    ))}
-                  </div>
-                  <div>
-                    <strong>{formatPrice(item.pricePence)}</strong>
-                    <button onClick={() => removeItem(item)}>
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <form className="customer-form" onSubmit={checkout}>
-            <h3>Collection details</h3>
-            <div className="form-grid">
-              <label>
-                Your name
-                <input required value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} />
-              </label>
-              <label>
-                Email address
-                <input required type="email" value={customer.email} onChange={(e) => setCustomer({ ...customer, email: e.target.value })} />
-              </label>
-              <label>
-                Mobile number
-                <input value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} />
-              </label>
-              <label>
-                Team name
-                <input value={customer.teamName} onChange={(e) => setCustomer({ ...customer, teamName: e.target.value })} />
-              </label>
-            </div>
-            {error && <p className="form-error">{error}</p>}
-            <button className="checkout-button" disabled={cart.length === 0 || submitting}>
-              {submitting ? "Taking you to Stripe…" : `Pay ${formatPrice(total)} securely`}
-            </button>
-            <p className="secure-note">Secure payment powered by Stripe. Card details never touch this website.</p>
-          </form>
-        </div>
-      </section>
-
-      <footer>
-        <strong>PHOTEAM</strong>
-        <span>Sports, school & family photography</span>
-        <a href="https://www.photeam.co.uk/privacy/">Privacy & data protection</a>
-      </footer>
-
-      {selected && (
-        <ImageIdModal
-          product={selected}
-          onClose={() => setSelected(null)}
-          onAdd={(ids) => addItem(selected, ids)}
-        />
-      )}
-    </main>
-  );
+  return <main>
+    <header className="site-header"><a className="brand" href="#top"><strong>PHOTEAM</strong><small>{event.name}</small></a><a className="basket-link" href="#basket">Basket <span>{cart.length}</span></a></header>
+    <section className="hero gallery-hero" id="top"><div className="hero-copy"><span className="kicker">Festival photo collection</span><h1>{event.name}</h1><p>Browse the event albums, choose your photographs and order prints for collection.</p>{!orderingOpen && <p className="ordering-closed">Orders are no longer being accepted for this event.</p>}</div></section>
+    <section className="gallery-section"><div className="section-heading"><div><span className="kicker dark">Event gallery</span><h2>Choose your photographs</h2></div></div>
+      <div className="gallery-layout"><nav className="gallery-albums" aria-label="Albums">{albums.filter((album) => !album.parentId).map((group) => <section key={group.id}><strong>{group.name}</strong>{leafAlbums.filter((album) => album.parentId === group.id).map((album) => <a key={album.id} className={album.id === albumId ? "active" : ""} href={`?album=${album.id}`} onClick={(click) => { click.preventDefault(); history.replaceState(null, "", `?album=${album.id}`); setAlbumId(album.id); }}>{album.name}</a>)}</section>)}</nav>
+      <div className="gallery-content"><p className="gallery-breadcrumb">{currentAlbum ? `${parentName} / ${currentAlbum.name}` : "Choose an album"}</p><div className="gallery-grid">{currentImages.map((photo) => <article key={photo.id}><div className="gallery-image"><Image unoptimized src={`/e/${event.publicToken}/images/${photo.id}/thumbnail`} alt={photo.filename} fill sizes="(max-width: 700px) 45vw, 220px" /></div><strong title={photo.filename}>{photo.filename}</strong></article>)}</div>{albumId && currentImages.length === 0 && <p>No photographs are currently available in this album.</p>}</div></div>
+    </section>
+    <section className="products-section" id="products"><div className="section-heading"><div><span className="kicker dark">Festival collection</span><h2>Choose your finish</h2></div></div><div className="product-grid">{products.map((product) => <article className={`product-card ${product.accent}`} key={product.id}><span className="product-eyebrow">{product.eyebrow}</span><h3>{product.name}</h3><p>{product.description}</p><div className="product-footer"><strong>{formatPrice(product.pricePence)}</strong><button disabled={!orderingOpen} onClick={() => setSelected(product)}>Choose photos</button></div></article>)}</div></section>
+    <section className="basket-section" id="basket"><div className="basket-panel"><div className="section-heading compact"><div><span className="kicker dark">Your order</span><h2>Festival basket</h2></div><strong className="basket-total">{formatPrice(total)}</strong></div>
+      {!cart.length ? <div className="empty-basket"><span>0</span><p>Your basket is waiting for its first photo.</p></div> : <div className="cart-lines">{cart.map((item) => <div className="cart-line" key={item.lineId}><div><strong>{item.productName}</strong>{item.selections.map((selection) => <span key={selection.label}>{selection.label}: <b>{selection.filename}</b></span>)}</div><div><strong>{formatPrice(item.pricePence)}</strong><button onClick={() => setCart((items) => items.filter((line) => line.lineId !== item.lineId))}>Remove</button></div></div>)}</div>}
+      <form className="customer-form" onSubmit={checkout}><h3>Collection details</h3><div className="form-grid"><label>Your name<input required value={customer.name} onChange={(change) => setCustomer({ ...customer, name: change.target.value })} /></label><label>Email address<input required type="email" value={customer.email} onChange={(change) => setCustomer({ ...customer, email: change.target.value })} /></label><label>Mobile number<input value={customer.phone} onChange={(change) => setCustomer({ ...customer, phone: change.target.value })} /></label><label>Team name<input value={customer.teamName} onChange={(change) => setCustomer({ ...customer, teamName: change.target.value })} /></label></div>{error && <p className="form-error">{error}</p>}<button className="checkout-button" disabled={!orderingOpen || !cart.length || submitting}>{submitting ? "Taking you to Stripe…" : orderingOpen ? `Pay ${formatPrice(total)} securely` : "Online ordering closed"}</button></form>
+    </div></section>
+    {selected && <GalleryPicker product={selected} albums={albums} images={images} token={event.publicToken} onClose={() => setSelected(null)} onAdd={(selections) => addItem(selected, selections)} />}
+  </main>;
 }
 
-function ImageIdModal({
-  product,
-  onClose,
-  onAdd
-}: {
-  product: PublicProduct;
-  onClose: () => void;
-  onAdd: (ids: Record<string, string>) => void;
-}) {
-  const [values, setValues] = useState<Record<string, string>>({});
-
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    const labelled = Object.fromEntries(
-      product.imageFields.map((field) => [field.label.replace(" image ID", ""), values[field.key].trim().toUpperCase()])
-    );
-    onAdd(labelled);
-  }
-
-  return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" onMouseDown={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
-        <span className="kicker dark">{product.eyebrow}</span>
-        <h2 id="modal-title">{product.name}</h2>
-        <p>Enter the image IDs exactly as they appear on the photo viewing boards.</p>
-        <form onSubmit={submit}>
-          {product.imageFields.map((field: ImageField) => (
-            <label key={field.key}>
-              {field.label}
-              <input
-                required
-                autoComplete="off"
-                placeholder="e.g. DSC_4821"
-                value={values[field.key] || ""}
-                onChange={(e) => setValues({ ...values, [field.key]: e.target.value })}
-              />
-              <small>{field.hint}</small>
-            </label>
-          ))}
-          <button className="checkout-button">Add to basket · {formatPrice(product.pricePence)}</button>
-        </form>
-      </div>
-    </div>
-  );
+function GalleryPicker({ product, albums, images, token, onClose, onAdd }: { product: PublicProduct; albums: PublicAlbum[]; images: PublicImage[]; token: string; onClose: () => void; onAdd: (values: Selection[]) => void }) {
+  const leaves = albums.filter((album) => album.parentId); const [albumId, setAlbumId] = useState(leaves[0]?.id || ""); const [values, setValues] = useState<Selection[]>([]); const required = product.imageFields.length;
+  function choose(photo: PublicImage) { if (values.some((value) => value.imageId === photo.id) || values.length >= required) return; const field = product.imageFields[values.length]; const album = albums.find((candidate) => candidate.id === photo.albumId)!; setValues((current) => [...current, { label: field.label.replace(" image ID", ""), imageId: photo.id, filename: photo.filename, albumName: album.name }]); }
+  return <div className="modal-backdrop" role="presentation" onMouseDown={onClose}><div className="modal gallery-picker" role="dialog" aria-modal="true" aria-labelledby="gallery-picker-title" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" aria-label="Close photograph picker" onClick={onClose}>×</button><h2 id="gallery-picker-title">{product.name}</h2><p>Select {required} distinct photograph{required === 1 ? "" : "s"}. Next: <strong>{product.imageFields[values.length]?.label || "Complete"}</strong></p><div className="picker-selections">{values.map((value) => <button key={value.label} onClick={() => setValues((current) => current.filter((entry) => entry.label !== value.label))}>{value.label}: {value.filename} ×</button>)}</div><label className="sr-only" htmlFor="picker-album">Album</label><select id="picker-album" value={albumId} onChange={(change) => setAlbumId(change.target.value)}>{leaves.map((album) => <option key={album.id} value={album.id}>{albums.find((parent) => parent.id === album.parentId)?.name} / {album.name}</option>)}</select><div className="gallery-grid picker-grid">{images.filter((image) => image.albumId === albumId).map((photo) => <button type="button" key={photo.id} disabled={values.some((value) => value.imageId === photo.id)} onClick={() => choose(photo)}><div className="gallery-image"><Image unoptimized src={`/e/${token}/images/${photo.id}/thumbnail`} alt={photo.filename} fill sizes="160px" /></div><span>{photo.filename}</span></button>)}</div><button className="checkout-button" disabled={values.length !== required} onClick={() => onAdd(values)}>Add to basket · {formatPrice(product.pricePence)}</button></div></div>;
 }

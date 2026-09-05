@@ -1,14 +1,16 @@
 # Photeam Festival Order Portal
 
 A production-ready Next.js order and collection portal for football festivals.
-Customers select one of five fixed photo products, enter the required image IDs, and
-pay through Stripe Checkout. Staff manage paid orders from a protected admin board,
+Customers follow an event-specific link, browse its album hierarchy and select photographs
+for one of five fixed products before paying through Stripe Checkout. Staff manage paid orders from a protected admin board,
 with notifications delivered through Mailgun.
 
 ## Production architecture
 
 - Next.js application and API routes
 - PostgreSQL database through Prisma
+- Private Vercel Blob storage containing watermarked thumbnails and previews only
+- Signed, replay-protected synchronisation initiated by the offline Application Server
 - Stripe Checkout with signed webhooks
 - Mailgun order confirmation, administrator alert, and collection-ready emails
 - Vercel Web Analytics page views with optional custom interaction events
@@ -55,6 +57,9 @@ Good managed options include Neon, Supabase, Railway, Render, and AWS RDS.
 | Variable | Purpose |
 | --- | --- |
 | `DATABASE_URL` | PostgreSQL connection string |
+| `SYNC_CREDENTIAL` | Shared HMAC credential used by the Application Server |
+| `SYNC_CREDENTIAL_NEXT` | Optional replacement credential during rotation |
+| `BLOB_READ_WRITE_TOKEN` | Private Vercel Blob store credential |
 | `NEXT_PUBLIC_SITE_URL` | Public HTTPS origin, without a trailing path |
 | `STRIPE_SECRET_KEY` | Stripe secret key |
 | `STRIPE_WEBHOOK_SECRET` | Signing secret for the production webhook |
@@ -128,7 +133,7 @@ check.
 2. In Stripe Workbench, create a webhook endpoint:
 
    ```text
-   https://orders.photeam.co.uk/api/stripe/webhook
+   https://festivalphotos.pipeitc.dev/api/stripe/webhook
    ```
 
 3. Subscribe to:
@@ -170,6 +175,8 @@ for customer-facing production use.
 ## Release checklist
 
 - Production PostgreSQL database created and backed up
+- Private Vercel Blob store connected and `BLOB_READ_WRITE_TOKEN` configured
+- Application Server and portal use the same 32+ character sync credential
 - All environment variables pass `npm run deploy:check`
 - Live Stripe key and live webhook signing secret configured
 - Mailgun domain verified and out of sandbox restrictions
@@ -181,6 +188,21 @@ for customer-facing production use.
 - Order confirmation email reaches the customer
 - Fulfilment email reaches the customer
 - Order can be marked collected
+- Archived event and album links show the friendly closed-order message
+- Archived image objects are absent from private Blob while reporting rows remain
 
 Do not commit `.env` or production credentials. Database migrations in
 `prisma/migrations` should be committed with every future schema change.
+
+## Gallery lifecycle
+
+The Application Server is authoritative for published events, albums and photographs.
+Only event-scoped, watermarked derivatives are accepted by the sync API; originals are
+never uploaded. Archiving an album or event removes its image objects from private Vercel
+Blob while retaining Neon metadata and order snapshots for reporting. A customer who
+follows or refreshes an archived link sees: **Orders are no longer being accepted for
+this event.** Manual and scheduled ordering closure are enforced again when checkout is
+created, so changing browser state cannot bypass the event cutoff.
+
+The staged implementation and remaining verification/deployment gates are recorded in
+[DELIVERY.md](DELIVERY.md).

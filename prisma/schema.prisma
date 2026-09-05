@@ -18,6 +18,7 @@ model Order {
   totalPence              Int
   currency                String   @default("gbp")
   paymentStatus           String   @default("pending")
+  paidAt                  DateTime?
   stripeCheckoutSessionId String?  @unique
   stripePaymentIntentId   String?
   adminNotifiedAt         DateTime?
@@ -27,7 +28,157 @@ model Order {
   collectedAt             DateTime?
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
+  eventId                 String?
+  event                   GalleryEvent? @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  sourceOrderId           String?  @unique
+  sourceOrderNumber       String?
+  sourceStatus            String?
+  sourceOrderVersion      Int?
+  syncAcknowledgedAt      DateTime?
+  sourceFulfilledAt       DateTime?
+  normalizedItems         OrderItem[]
 
   @@index([createdAt])
   @@index([paymentStatus, fulfilledAt, collectedAt])
+  @@index([paymentStatus, syncAcknowledgedAt, createdAt])
+}
+
+model GallerySource {
+  id          String   @id
+  createdAt   DateTime @default(now())
+  lastSeenAt  DateTime?
+  events      GalleryEvent[]
+  mappings    ProductMapping[]
+}
+
+model GalleryEvent {
+  id             String   @id
+  sourceId       String
+  source         GallerySource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  name           String
+  eventDate      DateTime
+  publicToken    String   @unique
+  revision       Int      @default(0)
+  status         String   @default("staging")
+  ordersEnabled  Boolean  @default(false)
+  ordersCloseAt  DateTime?
+  unavailableMessage String @default("Orders are no longer being accepted for this event.")
+  archivedAt     DateTime?
+  updatedAt      DateTime @updatedAt
+  albums         GalleryAlbum[]
+  images         GalleryImage[]
+  syncBatches    GallerySyncBatch[]
+  orders         Order[]
+
+  @@index([sourceId, status])
+}
+
+model GalleryAlbum {
+  id           String   @id
+  eventId      String
+  event        GalleryEvent @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  parentId     String?
+  parent       GalleryAlbum? @relation("AlbumTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children     GalleryAlbum[] @relation("AlbumTree")
+  name         String
+  version      Int      @default(1)
+  active       Boolean  @default(false)
+  archivedAt   DateTime?
+  images       GalleryImage[]
+
+  @@index([eventId, parentId, name])
+}
+
+model GalleryImage {
+  id             String   @id
+  eventId        String
+  event          GalleryEvent @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  albumId        String
+  album          GalleryAlbum @relation(fields: [albumId], references: [id], onDelete: Restrict)
+  filename       String
+  width          Int?
+  height         Int?
+  sourceHash     String
+  thumbnailPath  String?
+  previewPath    String?
+  active         Boolean  @default(false)
+  archivedAt     DateTime?
+  orderImages    OrderItemImage[]
+  syncAssets     GallerySyncAsset[]
+
+  @@index([eventId, albumId, active])
+  @@index([eventId, filename])
+}
+
+model GallerySyncBatch {
+  id          String   @id @default(cuid())
+  operationId String   @unique
+  eventId     String
+  event       GalleryEvent @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  revision    Int
+  status      String   @default("staging")
+  manifest    Json
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
+  assets      GallerySyncAsset[]
+}
+
+model GallerySyncAsset {
+  syncId        String
+  sync          GallerySyncBatch @relation(fields: [syncId], references: [id], onDelete: Cascade)
+  imageId       String
+  image         GalleryImage @relation(fields: [imageId], references: [id], onDelete: Restrict)
+  thumbnailPath String?
+  previewPath   String?
+
+  @@id([syncId, imageId])
+  @@index([imageId])
+}
+
+model SyncNonce {
+  nonce       String   @id
+  expiresAt   DateTime
+
+  @@index([expiresAt])
+}
+
+model ProductMapping {
+  portalProductId String
+  sourceId        String
+  source          GallerySource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  sourceProductId String
+  code            String
+  name            String
+  imageCount      Int
+  updatedAt       DateTime @updatedAt
+
+  @@id([sourceId, portalProductId])
+}
+
+model OrderItem {
+  id             String   @id @default(cuid())
+  orderId        String
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  position       Int
+  portalProductId String
+  productName    String
+  quantity       Int
+  unitPricePence Int
+  images         OrderItemImage[]
+
+  @@unique([orderId, position])
+}
+
+model OrderItemImage {
+  id           String   @id @default(cuid())
+  orderItemId  String
+  orderItem    OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  position     Int
+  imageId      String
+  image        GalleryImage @relation(fields: [imageId], references: [id], onDelete: Restrict)
+  filename     String
+  albumName    String
+
+  @@unique([orderItemId, position])
+  @@unique([orderItemId, imageId])
 }

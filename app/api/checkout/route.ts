@@ -3,8 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { getProduct, getProductPrice } from "@/lib/products";
 import { getStripe } from "@/lib/stripe";
 import type { OrderedItem } from "@/lib/email";
+import { isOrderingOpen } from "@/lib/gallery";
 
 type CheckoutBody = {
+  eventToken?: string;
   customer?: {
     name?: string;
     email?: string;
@@ -13,7 +15,7 @@ type CheckoutBody = {
   };
   items?: Array<{
     productId?: string;
-    imageIds?: Record<string, string>;
+    imageIds?: string[];
   }>;
 };
 
@@ -40,18 +42,26 @@ export async function POST(request: Request) {
     if (!Array.isArray(body.items) || body.items.length < 1 || body.items.length > 30) {
       return NextResponse.json({ error: "Your basket must contain between 1 and 30 items." }, { status: 400 });
     }
+    const galleryEvent = await prisma.galleryEvent.findUnique({ where: { publicToken: clean(body.eventToken, 80) } });
+    if (!galleryEvent || !isOrderingOpen(galleryEvent)) return NextResponse.json({ error: "Orders are no longer being accepted for this event." }, { status: 409 });
+    const submittedImageIds = body.items.flatMap((item) => item.imageIds || []);
+    const galleryImages = await prisma.galleryImage.findMany({ where: { id: { in: submittedImageIds }, eventId: galleryEvent.id, active: true, archivedAt: null, album: { active: true, archivedAt: null } }, include: { album: true } });
+    const imageById = new Map(galleryImages.map((image) => [image.id, image]));
+    if (imageById.size !== new Set(submittedImageIds).size) return NextResponse.json({ error: "One or more selected photographs are no longer available." }, { status: 409 });
+    const mappings = await prisma.productMapping.findMany({ where: { sourceId: galleryEvent.sourceId, portalProductId: { in: body.items.map((item) => clean(item.productId, 80)) } } });
+    const mappingByProduct = new Map(mappings.map((mapping) => [mapping.portalProductId, mapping]));
 
     const items: OrderedItem[] = body.items.map((submittedItem) => {
       const product = getProduct(clean(submittedItem.productId, 80));
       if (!product) throw new Error("Your basket contains an unknown product.");
-
-      const submittedIds = submittedItem.imageIds || {};
+      const submittedIds = submittedItem.imageIds || []; const mapping = mappingByProduct.get(product.id);
+      if (!mapping || mapping.imageCount !== product.imageFields.length || submittedIds.length !== product.imageFields.length || new Set(submittedIds).size !== submittedIds.length) throw new Error(`Choose ${product.imageFields.length} distinct photograph${product.imageFields.length === 1 ? "" : "s"} for ${product.name}.`);
       const imageIds = Object.fromEntries(
-        product.imageFields.map((field) => {
+        product.imageFields.map((field, index) => {
           const label = field.label.replace(" image ID", "");
-          const value = clean(submittedIds[label], 80).toUpperCase();
-          if (!value) throw new Error(`Please provide every image ID for ${product.name}.`);
-          return [label, value];
+          const image = imageById.get(submittedIds[index]);
+          if (!image) throw new Error(`A selected photograph for ${product.name} is no longer available.`);
+          return [label, image.filename];
         })
       );
 
@@ -60,7 +70,8 @@ export async function POST(request: Request) {
         productName: product.name,
         quantity: 1,
         unitPricePence: getProductPrice(product),
-        imageIds
+        imageIds,
+        galleryImageIds: submittedIds
       };
     });
 
@@ -73,7 +84,9 @@ export async function POST(request: Request) {
         customerPhone: clean(body.customer?.phone, 40) || null,
         teamName: clean(body.customer?.teamName, 100) || null,
         items,
-        totalPence
+        totalPence,
+        eventId: galleryEvent.id,
+        normalizedItems: { create: items.map((item, position) => ({ position: position + 1, portalProductId: item.productId, productName: item.productName, quantity: item.quantity, unitPricePence: item.unitPricePence, images: { create: item.galleryImageIds.map((imageId, imagePosition) => { const image = imageById.get(imageId)!; return { position: imagePosition + 1, imageId, filename: image.filename, albumName: image.album.name }; }) } })) }
       }
     });
 

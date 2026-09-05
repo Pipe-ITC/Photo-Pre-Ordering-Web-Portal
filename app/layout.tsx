@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
+import "./gallery.css";
 
 export const metadata: Metadata = {
   title: "Festival Photo Orders | Photeam",

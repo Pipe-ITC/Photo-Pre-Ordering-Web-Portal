@@ -45,6 +45,7 @@ export type OrderedItem = {
   quantity: number;
   unitPricePence: number;
   imageIds: Record<string, string>;
+  galleryImageIds: string[];
 };
 
 function escapeHtml(value: string) {

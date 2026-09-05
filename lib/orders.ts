@@ -42,6 +42,7 @@ export async function reconcilePaidCheckoutSession(
     where: { id: order.id },
     data: {
       paymentStatus: "paid",
+      paidAt: order.paidAt || new Date(),
       stripeCheckoutSessionId: session.id,
       stripePaymentIntentId:
         typeof session.payment_intent === "string"
