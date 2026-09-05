@@ -1,0 +1,43 @@
+{
+  "date": "2026-09-05T21:16:05Z",
+  "productionUrl": "https://festivalphotos.pipeitc.dev",
+  "deploymentId": "dpl_9G7wprEpLPdcbN66ogemTaZ2euZG",
+  "deploymentUrl": "https://photo-pre-ordering-web-portal-ndfa0vplz-dazcox85s-projects.vercel.app",
+  "commit": "7593922",
+  "status": "READY",
+  "functionRegion": "lhr1",
+  "health": {
+    "status": "ok",
+    "database": "connected"
+  },
+  "neon": {
+    "projectId": "still-band-38066857",
+    "branchId": "br-dawn-sea-abr247qp",
+    "branch": "production",
+    "database": "neondb",
+    "tables": 12,
+    "appliedMigrations": 3,
+    "latestMigration": "20260905160000_online_gallery_sync",
+    "existingDataRemoved": true,
+    "applicationRowsAfterValidationCleanup": 0
+  },
+  "blob": {
+    "storeId": "store_Hyi62DBFnzahTJVx",
+    "name": "festival-gallery-images",
+    "access": "private",
+    "region": "lhr1",
+    "objectsAfterValidationCleanup": 0
+  },
+  "checks": [
+    "production environment validation passed",
+    "production build and TypeScript checks passed",
+    "migration passed on a disposable Neon branch",
+    "live database health check passed",
+    "unsigned sync request rejected",
+    "event hierarchy, filename and mapped product rendered",
+    "archived album displayed the friendly ordering-closed message",
+    "archived event displayed the friendly ordering-closed message",
+    "synthetic validation rows removed",
+    "production error log scan clean"
+  ]
+}
