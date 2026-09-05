@@ -7,3 +7,5 @@ prisma/dev.db-journal
 npm-debug.log*
 *.tsbuildinfo
 .DS_Store
+.vercel
+.env*
