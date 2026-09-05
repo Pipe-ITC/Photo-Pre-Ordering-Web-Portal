@@ -47,8 +47,8 @@ function requiredUploads(syncId: string, manifest: Manifest, existing: Map<strin
   const items = manifest.images.flatMap((image): ManifestUpload[] => {
     const prior = existing.get(image.id); const changed = !prior || prior.sourceHash !== image.sourceHash;
     return [
-      ...(!prior?.thumbnailPath || changed ? [{ photoId: image.id, kind: "web-thumbnail", path: `/api/sync/v1/uploads/${syncId}/${image.id}/web-thumbnail` }] : []),
-      ...(!prior?.previewPath || changed ? [{ photoId: image.id, kind: "web-preview", path: `/api/sync/v1/uploads/${syncId}/${image.id}/web-preview` }] : [])
+      ...(!prior?.thumbnailPath || changed ? [{ photoId: image.id, kind: "web-thumbnail" as const, path: `/api/sync/v1/uploads/${syncId}/${image.id}/web-thumbnail` }] : []),
+      ...(!prior?.previewPath || changed ? [{ photoId: image.id, kind: "web-preview" as const, path: `/api/sync/v1/uploads/${syncId}/${image.id}/web-preview` }] : [])
     ];
   });
   return { syncId, items };

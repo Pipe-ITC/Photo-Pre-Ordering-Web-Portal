@@ -12,7 +12,7 @@ export async function PUT(request: Request, context: { params: Promise<{ syncId:
     const manifest = batch?.manifest as { images?: Array<{ id: string }> } | undefined;
     if (!batch || batch.status !== "staging" || !image || image.eventId !== batch.eventId || !manifest?.images?.some((item) => item.id === photoId)) return Response.json({ error: "invalid_upload_target" }, { status: 409 });
     const pathname = `events/${batch.eventId}/images/${photoId}/${syncId}-${kind}.jpg`;
-    const blob = await put(pathname, body, { access: "private", addRandomSuffix: false, allowOverwrite: true, contentType: "image/jpeg", cacheControlMaxAge: 3600 });
+    const blob = await put(pathname, Buffer.from(body), { access: "private", addRandomSuffix: false, allowOverwrite: true, contentType: "image/jpeg", cacheControlMaxAge: 3600 });
     await prisma.gallerySyncAsset.upsert({ where: { syncId_imageId: { syncId, imageId: photoId } }, create: { syncId, imageId: photoId, ...(kind === "web-thumbnail" ? { thumbnailPath: blob.pathname } : { previewPath: blob.pathname }) }, update: kind === "web-thumbnail" ? { thumbnailPath: blob.pathname } : { previewPath: blob.pathname } });
     return Response.json({ stored: true });
   } catch (error) { return syncError(error); }
