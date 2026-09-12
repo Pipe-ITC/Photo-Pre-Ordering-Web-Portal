@@ -11,12 +11,16 @@ export type PublicImage = { id: string; albumId: string; filename: string; width
 type Selection = { label: string; imageId: string; filename: string; albumName: string };
 type CartItem = { lineId: string; productId: string; productName: string; pricePence: number; selections: Selection[] };
 
-export function Storefront({ event, products, albums, images, orderingOpen, initialAlbumId }: { event: { name: string; publicToken: string; ordersCloseAt: string | null }; products: PublicProduct[]; albums: PublicAlbum[]; images: PublicImage[]; orderingOpen: boolean; initialAlbumId?: string }) {
+export function Storefront({ event, products, albums, images, orderingOpen, initialAlbumId, initialQuery = "" }: { event: { name: string; publicToken: string; ordersCloseAt: string | null }; products: PublicProduct[]; albums: PublicAlbum[]; images: PublicImage[]; orderingOpen: boolean; initialAlbumId?: string; initialQuery?: string }) {
   const leafAlbums = albums.filter((album) => album.parentId); const firstAlbumId = leafAlbums.find((album) => album.id === initialAlbumId)?.id || leafAlbums[0]?.id || ""; const [albumId, setAlbumId] = useState(firstAlbumId);
   const [selected, setSelected] = useState<PublicProduct | null>(null); const [cart, setCart] = useState<CartItem[]>([]);
   const [customer, setCustomer] = useState({ name: "", email: "", phone: "", teamName: "" }); const [submitting, setSubmitting] = useState(false); const [error, setError] = useState("");
   const total = useMemo(() => cart.reduce((sum, item) => sum + item.pricePence, 0), [cart]);
   const currentImages = images.filter((image) => image.albumId === albumId); const currentAlbum = albums.find((album) => album.id === albumId); const parentName = albums.find((album) => album.id === currentAlbum?.parentId)?.name;
+
+  function albumHref(nextAlbumId: string) {
+    const query = new URLSearchParams(initialQuery); query.set("album", nextAlbumId); return `?${query.toString()}`;
+  }
 
   function addItem(product: PublicProduct, selections: Selection[]) {
     setCart((items) => [...items, { lineId: crypto.randomUUID(), productId: product.id, productName: product.name, pricePence: product.pricePence, selections }]);
@@ -35,7 +39,7 @@ export function Storefront({ event, products, albums, images, orderingOpen, init
     <header className="site-header"><a className="brand" href="#top"><strong>PHOTEAM</strong><small>{event.name}</small></a>{orderingOpen && <a className="basket-link" href="#basket">Basket <span>{cart.length}</span></a>}</header>
     <section className="hero gallery-hero" id="top"><div className="hero-copy"><span className="kicker">Festival photo collection</span><h1>{event.name}</h1><p>Browse the event albums, choose your photographs and order prints for collection.</p></div></section>
     <section className="gallery-section"><div className="section-heading"><div><span className="kicker dark">Event gallery</span><h2>Choose your photographs</h2></div></div>
-      <div className="gallery-layout"><nav className="gallery-albums" aria-label="Albums">{albums.filter((album) => !album.parentId).map((group) => <section key={group.id}><strong>{group.name}</strong>{leafAlbums.filter((album) => album.parentId === group.id).map((album) => <a key={album.id} className={album.id === albumId ? "active" : ""} href={`?album=${album.id}`} onClick={(click) => { click.preventDefault(); history.replaceState(null, "", `?album=${album.id}`); setAlbumId(album.id); }}>{album.name}</a>)}</section>)}</nav>
+      <div className="gallery-layout"><nav className="gallery-albums" aria-label="Albums">{albums.filter((album) => !album.parentId).map((group) => <section key={group.id}><strong>{group.name}</strong>{leafAlbums.filter((album) => album.parentId === group.id).map((album) => <a key={album.id} className={album.id === albumId ? "active" : ""} href={albumHref(album.id)} onClick={(click) => { click.preventDefault(); history.replaceState(null, "", albumHref(album.id)); setAlbumId(album.id); }}>{album.name}</a>)}</section>)}</nav>
       <div className="gallery-content"><p className="gallery-breadcrumb">{currentAlbum ? `${parentName} / ${currentAlbum.name}` : "Choose an album"}</p><div className="gallery-grid">{currentImages.map((photo) => <article key={photo.id}><div className="gallery-image"><Image unoptimized src={`/e/${event.publicToken}/images/${photo.id}/thumbnail`} alt={photo.filename} fill sizes="(max-width: 700px) 45vw, 220px" /></div><strong title={photo.filename}>{photo.filename}</strong></article>)}</div>{albumId && currentImages.length === 0 && <p>No photographs are currently available in this album.</p>}</div></div>
     </section>
     {orderingOpen && <section className="products-section" id="products"><div className="section-heading"><div><span className="kicker dark">Festival collection</span><h2>Choose your finish</h2></div></div><div className="product-grid">{products.map((product) => <article className={`product-card ${product.accent}`} key={product.id}><span className="product-eyebrow">{product.eyebrow}</span><h3>{product.name}</h3><p>{product.description}</p><div className="product-footer"><strong>{formatPrice(product.pricePence)}</strong><button onClick={() => setSelected(product)}>Choose photos</button></div></article>)}</div></section>}
