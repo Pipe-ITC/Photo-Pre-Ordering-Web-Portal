@@ -1,10 +1,12 @@
 {
-  "date": "2026-09-05T21:16:05Z",
+  "date": "2026-09-12T14:01:16Z",
   "productionUrl": "https://festivalphotos.pipeitc.dev",
-  "deploymentId": "dpl_9G7wprEpLPdcbN66ogemTaZ2euZG",
-  "deploymentUrl": "https://photo-pre-ordering-web-portal-ndfa0vplz-dazcox85s-projects.vercel.app",
-  "commit": "7593922",
+  "deploymentId": "dpl_GNKTMTDYVSPabumd7bagRcG1FLRM",
+  "deploymentUrl": "https://photo-pre-ordering-web-portal-nvv1nfrjz-dazcox85s-projects.vercel.app",
+  "commit": "46a3217",
   "status": "READY",
+  "framework": "Next.js 16.2.7",
+  "buildDurationSeconds": 52,
   "functionRegion": "lhr1",
   "health": {
     "status": "ok",
@@ -29,15 +31,11 @@
     "objectsAfterValidationCleanup": 0
   },
   "checks": [
-    "production environment validation passed",
-    "production build and TypeScript checks passed",
-    "migration passed on a disposable Neon branch",
-    "live database health check passed",
-    "unsigned sync request rejected",
-    "event hierarchy, filename and mapped product rendered",
-    "archived album displayed the friendly ordering-closed message",
-    "archived event displayed the friendly ordering-closed message",
-    "synthetic validation rows removed",
+    "production deployment reached READY and the live domain alias was assigned",
+    "extended application-server QR URL returned HTTP 200",
+    "event gallery and selected album rendered from the production database",
+    "unrelated QR query parameters were preserved during album navigation",
+    "no pending Prisma migrations were reported during the production build",
     "production error log scan clean"
   ]
 }
